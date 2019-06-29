@@ -1,0 +1,227 @@
+% Simple_N_back_psychtoolbox_Matlab_22102018 
+%
+%This code Present N_Back stimulus and save a *.xls file that contains
+%'SubID\ SubAge\ Gender\ Type\ i_back\  Time\ Reaction_Time\ Location\ Color or Pressed Key\.
+%I hope this code help you and speed up your study!
+%Please don't hesitate to ask your question.(MJDarvishi.ir)
+% see also psychtoolbox inputdlg
+
+%%
+% Clear the workspace and the screen
+sca;
+close all;
+clearvars;
+%% Get Task properties
+
+%% Get Subject Information
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Login prompt and open file for writing data out
+prompt = {'Outputfile', 'Subject''s number:', 'age', 'gender', 'i_back',};
+defaults = {'NumberExp1', '98', '18', 'F', '1'};
+answer = inputdlg(prompt, 'NumberExp1', 2, defaults);
+[output, SubID, SubAge, Gender, i_back] = deal(answer{:}); % all input variables are strings
+outputname = [output Gender SubID i_back SubAge '.xls'];
+if exist(outputname)==2 % check to avoid overiding an existing file
+    %     fileproblem = input('That file already exists! Append a .x (1), overwrite (2), or break (3/default)?');
+    
+    % Construct a questdlg with three options
+    fileproblem = questdlg('That file already exists!','warning','Append a .x ', 'overwrite', 'break','break');
+    %%%%%%%%%%%%%%%%%%
+    if isempty(fileproblem) || strcmp(fileproblem,'break')
+        return;
+    elseif strcmp(fileproblem,'Append a .x ')%fileproblem==1
+        outputname = [outputname '.x'];
+    end
+end
+% global outfile  SubID SubAge  Gender  i_back T1 outData Location
+% outData={};ii_out=1;
+
+outfile = fopen(outputname,'w'); % open a file for writing data out
+
+fprintf(outfile, 'SubID\t SubAge\t Gender\t Type\t i_back\t  Time\t Reaction_Time\t Location\t Color or Pressed Key\t  \n');
+
+%% Here we call some default settings for setting up Psychtoolbox
+PsychDefaultSetup(2);
+
+% Get the screen numbers
+screens = Screen('Screens');
+
+% Draw to the external screen if avaliable
+screenNumber = max(screens);
+
+% Define black and white
+white = WhiteIndex(screenNumber);
+black = BlackIndex(screenNumber);
+grey = white / 2;
+
+% Open an on screen window
+[window, windowRect] = PsychImaging('OpenWindow', screenNumber, grey);
+
+% Get the size of the on screen window
+[screenXpixels, screenYpixels] = Screen('WindowSize', window);
+
+% Get the centre coordinate of the window
+[xCenter, yCenter] = RectCenter(windowRect);
+
+% Make a base Rect of 200 by 200 pixels
+dim = 150;
+baseRect = [0 0 dim dim];
+
+% Make the coordinates for our grid of squares
+[xPos, yPos] = meshgrid(-1:1:1, -1:1:1);
+
+% Calculate the number of squares and reshape the matrices of coordinates
+% into a vector
+[s1, s2] = size(xPos);
+numSquares = s1 * s2;
+xPos = reshape(xPos, 1, numSquares);
+yPos = reshape(yPos, 1, numSquares);
+
+% Scale the grid spacing to the size of our squares and centre
+xPosLeft = xPos .* dim + screenXpixels * 0.5;
+yPosLeft = yPos .* dim + yCenter;
+
+%% Make our rectangle coordinates
+allRectsLeft = nan(4, 3);
+for i = 1:numSquares
+    allRectsLeft(:, i) = CenterRectOnPointd(baseRect,...
+        xPosLeft(i), yPosLeft(i));
+end
+
+%%
+switch  i_back
+    
+    case '1'
+        i_back_Note='One_Back';
+        
+    case '2'
+        i_back_Note='Two_Back';
+        
+    case '3'
+        i_back_Note='Three_Back';
+end
+
+%% iback presentation
+% Draw the white rect to the screen
+% Set the white color for each of our squares
+multiColors = 0.9.*ones(3, numSquares);
+Screen('FillRect', window, 0* multiColors +1,  allRectsLeft  );
+textString= sprintf('%s "Press any key to continue"' ,i_back_Note);
+DrawFormattedText(window, textString, 'center', 'center', black,[],[],[],[],[]);
+% Flip to the screen
+Screen('Flip', window);
+KbWait
+
+%% Set color and location that want to display
+colors=[1 0 0; 0 1 0; 0 0 1; 1 1 0]'; % [Red;Green;Blue;Yellow]
+Color_name={'Red' 'Green' 'Blue' 'Yellow'};
+Locations=[1 2 3 4 5 6 7 8 9];
+
+%% Set some parameter
+outData={};
+ii_out=1;
+
+%% Start Task
+for ii_trial=1:10 % 10 is the number of trials
+    
+    % Set the colors of our target squares
+    Location_rand=ceil(9*rand(1,1));
+    Location=Locations(Location_rand);
+    % Set the colors of each of our squares
+    multiColors = 0.9.*ones(3, numSquares);
+    % Set the colors of our target squares
+    Color_rand=ceil(4*rand(1,1));
+    multiColors(1:3,Location)=colors(:,Color_rand);
+    
+    % Draw the rect to the screen
+    Screen('FillRect', window,  multiColors ,  allRectsLeft  );
+    % Flip to the screen
+    Screen('Flip', window);
+    
+    fprintf(outfile, '%s\t %s\t %s\t %s\t %s\t %d\t %d\t %d\t %s\t  \n',SubID, SubAge, Gender, 'P', i_back_Note ,GetSecs, GetSecs ,Location, Color_name{1,Color_rand} );
+    outData{1,1}(ii_out,:)={ 'P' i_back ,GetSecs, GetSecs ,Location, Color_name{1,Color_rand}};ii_out=ii_out+1;
+    T1=GetSecs;
+    
+    %% Get response function
+    Time2Wait=.5;
+    
+    while ((GetSecs-T1<Time2Wait))%&&(GetSecs-secs>0.35))
+        [keyIsDown,secs,keyCode]= KbCheck(-1);
+        
+        PressedKey = KbName(keyCode);
+        if strcmp(PressedKey,'ESCAPE')
+            sca;
+            return;
+        elseif  strcmp(PressedKey,'RightArrow')|| strcmp(PressedKey,'LeftArrow')
+            fprintf(outfile,  '%s\t %s\t %s\t %s\t %s\t %d\t %d\t %d\t %s\t  \n',SubID, SubAge, Gender,'R', i_back_Note , GetSecs, GetSecs-T1 ,Location, PressedKey );
+            outData{1,1}(ii_out,:)={ 'R' i_back ,GetSecs, GetSecs ,Location, PressedKey};ii_out=ii_out+1;
+            
+            
+            % If the user holds down a key, KbCheck will report multiple events.
+            % To condense multiple 'keyDown' events into a single event, we wait until all
+            % keys have been released.
+            KbReleaseWait;
+        end
+    end
+    %%
+    multiColors = 0.9.*ones(3, numSquares);
+    % Draw the rect to the screen
+    Screen('FillRect', window,  multiColors ,  allRectsLeft  );
+    
+    % Flip to the screen
+    Screen('Flip', window);
+    
+    %% Get response function
+    Time2Wait=2.5;
+    
+    while ((GetSecs-T1<Time2Wait))%&&(GetSecs-secs>0.35))
+        [keyIsDown,secs,keyCode]= KbCheck(-1);
+        
+        PressedKey = KbName(keyCode);
+        if strcmp(PressedKey,'ESCAPE')
+            sca;
+            return;
+        elseif  strcmp(PressedKey,'RightArrow')|| strcmp(PressedKey,'LeftArrow')
+            fprintf(outfile, '%s\t %s\t %s\t %s\t %s\t %d\t %d\t %d\t %s\t  \n',SubID, SubAge, Gender,'R', i_back_Note, GetSecs, GetSecs-T1 ,Location, PressedKey );
+            outData{1,1}(ii_out,:)={'R'  i_back ,GetSecs, GetSecs ,Location, PressedKey}; ii_out=ii_out+1;
+            
+            
+            % If the user holds down a key, KbCheck will report multiple events.
+            % To condense multiple 'keyDown' events into a single event, we wait until all
+            % keys have been released.
+            KbReleaseWait;
+        end
+    end
+    
+    
+end
+
+
+
+% Draw the Black rects to the screen
+% Set the Black color for each of our squares
+Screen('FillRect', window, 0* multiColors,  allRectsLeft  );
+% Flip to the screen
+Screen('Flip', window);
+
+outData{1,1}(ii_out,:)={ 'End' i_back ,GetSecs, GetSecs ,0, 'Black'};ii_out=ii_out+1;
+
+WaitSecs(2)
+
+
+textString= sprintf('The End/Thank you');
+DrawFormattedText(window, textString, 'center', 'center', black,[],[],[],[],[]);
+% Flip to the screen
+Screen('Flip', window);
+
+% Wait for a key press
+KbStrokeWait;
+
+% Clear the screen
+sca;
+
+%% Also, You can save workspace as *.mat file
+
+formatOut = 'dd_mm_yy-HH_MM_SS';
+filename=['Workspacet_' datestr(now,formatOut) '.' 'mat'];
+save(filename)

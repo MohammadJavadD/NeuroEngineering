@@ -1,0 +1,56 @@
+%Simple code for extract a mean of PSD in EEGlab
+% I just modify the code, Thanks Christian Panitz for share The codes
+%Mohammad Javad (653)
+%% intialize
+cd 'E:\EEG\APP\eeglab_current\eeglab14_1_1b'
+eeglab
+%% g.tec data import
+ii=1
+currentFolder = pwd;
+folder=dir([currentFolder '\data']);
+folder(1:2,:)=[];
+load([folder.folder '\' folder.name(ii,:)])
+data=squeeze(data);
+
+%% load to eeglab
+EEG = pop_importdata('dataformat','array','nbchan',0,'data','data','setname','data_name','srate',SR,'pnts',0,'xmin',0);
+EEG = eeg_checkset( EEG );
+
+%%Pre-processing 
+% you should add your pipeline. I recommend use Makoto's preprocessing
+% pipeline (google it!)
+
+%% extract a mean of PSD in EEGlab
+sampRate = EEG.srate; %sampling rate of your data
+chanNr = EEG.nbchan; %channel number of your lead
+sampWin = []; %indices of sample points you want to go into analysis. If empty: whole segment is used.
+%computing log spectrum for different frequencies
+if isempty(sampWin)
+[power, freq] = spectopo(EEG.data, 0, sampRate);
+else
+[power, freq] = spectopo(EEG.data , 0, sampRate);
+end
+
+%average power within the predefined frequency range
+DeltaLowerFreq = 0; %lower bound of Delta frequency band 
+DeltaHigherFreq = 3; %upper bound of Delta frequency band
+
+ThetaLowerFreq = 4; %lower bound of Delta frequency band 
+ThetaHigherFreq = 7; %upper bound of Delta frequency band
+
+AlphaLowerFreq = 8; %lower bound of Delta frequency band 
+AlphaHigherFreq = 11; %upper bound of Delta frequency band
+
+BetaLowerFreq = 12; %lower bound of Delta frequency band 
+BetaHigherFreq = 19; %upper bound of Delta frequency band
+
+GammaLowerFreq = 20; %lower bound of Delta frequency band 
+GammaHigherFreq = 40; %upper bound of Delta frequency band
+
+DeltaMeanPower = mean(power(:,freq >= DeltaLowerFreq & freq <= DeltaHigherFreq),2);
+ThetaMeanPower = mean(power(:,freq >= ThetaLowerFreq & freq <= ThetaHigherFreq),2);
+AlphaMeanPower = mean(power(:,freq >= AlphaLowerFreq & freq <= AlphaHigherFreq),2);
+BetaMeanPower = mean(power(:,freq >= BetaLowerFreq & freq <= BetaHigherFreq),2);
+GammaMeanPower = mean(power(:,freq >= GammaLowerFreq & freq <= GammaHigherFreq),2);
+
+AllChannelAllBand=[DeltaMeanPower ThetaMeanPower AlphaMeanPower BetaMeanPower GammaMeanPower];
