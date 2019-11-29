@@ -1,0 +1,3 @@
+[submodule "TSNE_EEG"]
+	path = TSNE_EEG
+	url = https://github.com/MohammadJavadD/TSNE_EEG.git
